@@ -1,0 +1,204 @@
+*HW 3;
+
+*Q1;
+data samoa;                                                                                                                           
+input ForNF age;   /* 1 is Not Fired and 0 is Fired*/                                                                                                                                                                                                     
+datalines;                                                                                                                                                                                                                   
+0 34
+0 37
+0 37
+0 38
+0 41
+0 42
+0 43
+0 44
+0 44
+0 45
+0 45
+0 45
+0 46
+0 48
+0 49
+0 53
+0 53
+0 54
+0 54
+0 55
+0 56
+1 27
+1 33
+1 36
+1 37
+1 38
+1 38
+1 39
+1 42
+1 42
+1 43
+1 43
+1 44
+1 44
+1 44
+1 45
+1 45
+1 45
+1 45
+1 46
+1 46
+1 47
+1 47
+1 48
+1 48
+1 49
+1 49
+1 51
+1 51
+1 52
+1 54
+;                                                                                                                                                                                                                            
+run;
+                    
+proc print data = samoa;
+run;
+
+*/Assumes a data file named samoa with variables ForNF and age has been uploaded, where 1 is Fired and 0 is Not Fired;
+*/For a two-sided test at alpha = 0.05; 
+proc ttest data = samoa;
+class ForNF;
+var age;
+run;
+
+*/For a one-sided test at alpha = 0.05; 
+proc ttest data = samoa sides = u;
+class ForNF;
+var age;
+run;
+
+*/For a 90% two-sided confidence interval to match the 0.05 one-sided hypothesis test;
+proc ttest data = samoa sides = 2 alpha = 0.1;
+class ForNF;
+var age;
+run;
+
+*/Critical value for a two-sided test at alpha = 0.05; 
+data critval;
+cv = quantile("T", .975, 49);
+
+proc print data = critval;
+run;
+
+*/Critical value for a one-sided test at alpha = 0.05; 
+data critval;
+cv = quantile("T", .95, 49);
+
+proc print data = critval;
+run;
+
+Q2;
+*To bring in data;
+FILENAME REFFILE '/home/sadiet0/SMU CASH DATA.xlsx';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=XLSX
+	OUT=schoolcash;
+	getnames = yes;
+RUN;
+proc print data = schoolcash;
+run; 
+
+*To test assumptions of the t-test;
+*To address assumptions of the t-test with histograms and q-q plots;
+proc univariate data = schoolcash;
+by school;
+histogram cash;
+qqplot cash;
+run; 
+
+*To address t-test assumptions with scatter plots;
+proc sgplot data = schoolcash;
+scatter x= school y = cash;
+run; 
+ 
+*To run a t-test;
+proc ttest data = schoolcash;
+class school;
+var cash;
+run;
+
+*To remove outlier;
+data schoolcashNoOutlier;
+set schoolcash;
+where cash < 1200;
+run;
+
+*To address t-test assumptions with scatter plots without outlier;
+proc sgplot data = schoolcashNoOutlier;
+scatter x= school y = cash;
+run; 
+
+*To run a t-test and check assumptions of t-test with histograms and q-q plots without outlier;
+proc ttest data = schoolcashNoOutlier;
+class school;
+var cash;
+run;
+
+Q3;
+*To import education data;
+FILENAME REFFILE '/home/sadiet0/my_courses/bsadler0/MSDS 6371/UNIT 3/EducationData.csv';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=education;
+	GETNAMES=YES;
+RUN;
+
+*To check t-test assumptions on original data;
+proc ttest data = education sides = l;
+class educ;
+var income2005;
+run;
+
+*To create a logged variable;
+data education;
+set education;
+logincome2005 = log(income2005);
+run;
+
+*To perform the t-test and check assumptions on log transformed data;
+proc ttest data = education sides = l;
+class educ;
+var logincome2005;
+run;
+
+*To get critical value for one-sided t-test at level alpha = 0.05;
+data critval;
+cv = quantile("t", .05, 1424);
+run;
+proc print critval;
+run;
+
+*To find a 90% confidence interval to align with an alpha = 0.05 one-sided hypothesis test;
+proc ttest data = education sides = 2 alpha = 0.1;
+class educ;
+var logincome2005;
+run;
+
+*Bonus;
+data tuition;
+input location $ cost;
+datalines;
+instate 1000
+instate 4000
+instate 5000
+instate 8000
+instate 40000
+outofstate 3000
+outofstate 8000
+outofstate 30000
+outofstate 32000
+outofstate 40000
+;
+run;
+
+*To get q-q plots;
+proc ttest data = tuition;
+class location;
+var cost;

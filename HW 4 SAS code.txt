@@ -1,0 +1,211 @@
+*HW 4;
+
+*Q12;
+
+*Part A;
+*To get logging data;
+data loggingdata;
+input Action $ PercentLost;
+datalines;
+L 45
+L 53.1
+L 40.8
+L 75.5
+L 46.7
+L 85.4
+L 85.6
+L 18.2
+L 43.2
+U 23.6
+U 13.3
+U 34.2
+U 18.1
+U 56.1
+U -8.1
+U -20.1
+;
+run;
+
+proc print data = loggingdata;
+run;
+
+*To compute rank sum test;
+proc npar1way data = loggingdata wilcoxon;
+class Action;
+var PercentLost;
+exact HL Wilcoxon;
+run;
+
+*To get a HL 90% confidence interval for the difference in medians to match the one-sided hypothesis test at alpha = 0.05;
+proc npar1way data = loggingdata wilcoxon alpha = 0.1;
+class Action;
+var PercentLost;
+exact HL Wilcoxon;
+run;
+
+*To get critical value for normal approximation;
+data mycritval;
+cv = quantile("normal", 0.95);
+run;
+
+proc print data = mycritval;
+run;
+
+*Q3;
+*To import education data;
+FILENAME REFFILE '/home/sadiet0/my_courses/bsadler0/MSDS 6371/UNIT 3/EducationData.csv';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=education;
+	GETNAMES=YES;
+RUN;
+
+*To check t-test assumptions on original data;
+proc ttest data = education sides = l;
+class educ;
+var income2005;
+run;
+
+*To perform t-test;
+proc ttest data = education sides = l;
+class educ;
+var income2005;
+run;
+
+*Q4;
+*Part B;
+data Metabolic;                                                                                                                           
+input Expend Trauma $;                                                                                                                                                                                                     
+datalines;                                                                                                                                                                                                                   
+18.8 Nontrauma
+20.0 Nontrauma
+20.1 Nontrauma
+20.9 Nontrauma
+20.9 Nontrauma
+21.4 Nontrauma
+22.7 Nontrauma
+22.9 Nontrauma
+22.0 Trauma
+23.0 Trauma
+24.5 Trauma
+25.8 Trauma
+30.0 Trauma
+37.6 Trauma
+38.5 Trauma
+;
+
+*To recode the string variable to a binary variable;
+data metabolic;
+set metabolic;
+TraumaBin = 0;
+If (Trauma = 'Trauma') then Traumabin = 1;
+run;
+
+proc print data = metabolic;
+run;
+
+*To perform rank sum test;
+proc npar1way data=Metabolic WILCOXON;
+class Traumabin;
+var Expend;
+exact;
+run;
+
+*Critical value for two-sided test;
+data mycritval;
+cv = quantile ("normal", 1-(0.05/2));
+run;
+proc print data = mycritval;
+run;
+
+*Q5;
+*Part A;
+*To find a one-sided p-value associated with a z-statistic of 2.13;
+data pvalue;
+pv = 1-probnorm(2.13);
+run;
+
+proc print data = pvalue;
+run;
+
+*Part B;
+*To get autism data;
+FILENAME REFFILE '/home/sadiet0/Autism.csv';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=autism;
+	GETNAMES=YES;
+RUN;
+
+proc print data = autism;
+run;
+
+*To create the variable that is a difference between the two measurements;
+data autism;
+set autism;
+diff = before - after;
+run;
+
+*To get a signed rank test AND a paired t-test;
+proc univariate data = autism;
+var diff;
+run;
+
+data myvalue;
+pvalue = 1 - probf(5.12, 3, 4);
+run;
+
+proc print data = myvalue;
+run;
+
+*Bonus;
+**To get the observed difference;                                                                                                                                                                                            
+proc npar1way data=Metabolic;                                                                                                                                                    
+class trauma;                                                                                                                                                 
+var expend;                                                                                                                                                                  
+run;                                                                                                                                                                                                                         
+
+ods output off;
+ods exclude all;
+**The code below is adapted from the following website;
+**http://sas-and-r.blogspot.com/2011/10/example-912-simpler-ways-to-carry-out.html;
+
+proc iml;                                                                                                                                                                                                                    
+use Metabolic;                                                                                                                         
+read all var{traumabin expend} into x;                                                                                               
+p = t(ranperm(x[,2],5000));                                                                                                                                  
+paf = x[,1]||p;
+create newds from paf;
+append from paf;
+quit;                                                                                                                                                                                                                        
+                                                                                                                                                                                                                             
+**calculates differences and creates a histogram;                                                                                                                                                             
+ods output WilcoxonTest=outnpar;                                                                                                                                                                                                  
+proc npar1way data=newds plots=none;                                                                                                                                                                                            
+  class col1;                                                                                                                                                                                                                
+  var col2 - col5001;                                                                                                                                                                                                        
+run;                                                                                                                                                                                                                         
+
+ods output on;
+ods exclude none;       
+                  
+proc univariate data=outnpar;                                                                                                                                                                                                   
+  where Name1 = "_WIL_";                                                                                                                                                                                                   
+  var nValue1;                                                                                                                                                                                                                  
+  histogram nValue1 / normal;                                                                                                                                                                                                            
+run;                                                                                                                                                                                                                         
+                                                                                                                                                                                  
+**The code below calculates the number of randomly generated differences that are as extreme or;
+**more extreme thant the one observed (divide this number by 5000 you have the pvalue);                                         
+
+data numdiffs;                                                                                                                                                                                                               
+set outnpar;                                                                                                                                                                                                                    
+where Name1 = "_WIL_"; 
+**Note the difference below should be the one you observed--the rank sum statistic;                                                                                                                                                                                                    
+if abs(nValue1) >= 82;                                                                      
+run; 
+                                                                                                                                                                                                                        
+**Visual of the rows produced by the above;              
+proc print data = numdiffs;                                                                                                                                                                                                  
+where Name1 = "_WIL_";                                                                                                                                                                                                     
+run;  
