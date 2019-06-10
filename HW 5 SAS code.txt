@@ -1,0 +1,156 @@
+*HW 5;
+
+*Q1;
+
+*/The following imports education income data;
+FILENAME REFFILE '/home/sadiet0/my_courses/bsadler0/MSDS 6371/UNIT 5/ex0525.csv';
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=CSV
+	OUT=incomedata;
+	GETNAMES=YES;
+RUN;
+proc print data = incomedata;
+run;
+
+*Later procedures need data sorted by group;
+proc sort data = incomedata;
+by educ;
+run;
+
+*To address ANOVA assumptions on original data with histograms and q-q plots;
+proc univariate data = incomedata;
+by educ;
+histogram income2005;
+qqplot income2005;
+run; 
+
+*To address ANOVA assumptions on original data with scatter plots;
+proc sgplot data = incomedata;
+scatter x= educ y = income2005;
+run; 
+
+*Perform a log transform;
+data incomedata;
+set incomedata;
+logincome2005 = log(income2005);
+run;
+
+*To address ANOVA assumptions on log transformed data with histograms and q-q plots;
+proc univariate data = incomedata;
+by educ;
+histogram logincome2005;
+qqplot logincome2005;
+run; 
+
+*To get a table of means and medians;
+proc means data = incomedata nway;
+class educ;
+var income2005;
+output out = incomesummary median = medianIncome mean = meanIncome;
+run;
+proc print data = incomesummary;
+var Educ medianIncome meanIncome;
+run;
+
+*To address ANOVA assumptions on log transformed data with scatter plots;
+proc sgplot data = incomedata;
+scatter x= educ y = logincome2005;
+run; 
+
+*To perform ANOVA on log transformed data;
+proc glm data = incomedata;
+class educ;
+model logincome2005 = educ;
+run;
+
+*Q2:
+*To perform ANOVA on log transformed data (full model);
+proc glm data = incomedata;
+class educ;
+model logincome2005 = educ;
+run;
+
+*Recode the data so that college and more than college are in the same group;
+Data incomedata;
+set incomedata;
+recodededuc = educ;
+if (educ = '>16' | educ = '16') then recodededuc = '16 or >16';
+run;
+
+*To perform ANOVA on log transformed data (reduced model);
+proc glm data = incomedata;
+class recodededuc;
+model logincome2005 = recodededuc;
+run;
+
+*To find P-value from an F statistic and degrees of freedom (numerator and denominator) for building our own ANOVA;
+data pval;
+pvalue = 1-probf(2.286, 1, 2579);
+run;
+proc print data = pval;
+run;
+
+*To find critical value for an F test at alpha = 0.05;
+data critval;
+criticalvalue = quantile("F", .95, 1, 2579);
+run;
+proc print data = critval;
+run;
+
+*To find critical value for a confidence interval of the difference in the mean of logged data at alpha = 0.05;
+data critval;
+criticalvalue = quantile("t", .975, 2579);
+run;
+proc print data = critval;
+run;
+
+*To get a table of means and medians on logged data for CI; 
+proc means data = incomedata nway;
+class educ;
+var logincome2005;
+output out = incomesummary median = medianIncome mean = meanIncome;
+run;
+
+proc glm data = incomedata order = data;
+class educ;
+model logincome2005 = educ;
+estimate '16 vs > 16' educ 0 0 1 0 -1;
+means educ / bon;
+run;
+
+*/To check the math of confidence interval given on logged data;
+proc glm data = incomedata order = data;
+class educ;
+model income2005 = educ;
+estimate '16 vs > 16' educ 0 0 1 0 -1;
+means educ / bon;
+run;
+
+*/To check the math of confidence interval given on original data;
+data small;
+set incomedata;
+where educ = '16' |educ = '>16';
+run;
+proc print data = small;
+run;
+*HL confidence interval on original data;
+proc npar1way hl data = small;
+class educ;
+var income2005;
+run;
+
+*Q3;
+*Code for assumptions was run in Q1;
+*Welch's ANOVA on original data;
+proc glm data = incomedata;
+class educ;
+model income2005 = educ;
+means educ / hovtest = bf welch;
+run;
+
+*Kruskal-Wallis test on original data;
+proc npar1way data = incomedata;
+class educ;
+var income2005;
+run;
+
